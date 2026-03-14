@@ -1,0 +1,33 @@
+name: Post Scheduled Diary
+
+on:
+  schedule:
+    # 毎日 12:00 UTC (日本時間 21:00) に実行
+    - cron: "0 12 * * *"
+  # 手動実行も可能
+  workflow_dispatch:
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run post script
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_ANSWERS_DB_ID: ${{ secrets.NOTION_ANSWERS_DB_ID }}
+          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+        run: npm run post

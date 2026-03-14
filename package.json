@@ -1,0 +1,19 @@
+{
+  "name": "3-line-diary-scheduler",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "post": "tsx scripts/post.ts",
+    "migrate": "tsx scripts/migrate.ts"
+  },
+  "dependencies": {
+    "@atproto/api": "^0.13.0",
+    "@notionhq/client": "^2.3.0",
+    "pinyin-pro": "^3.27.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
