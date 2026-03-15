@@ -7,7 +7,6 @@ Automated Bluesky posting scheduler for Chinese 3-Line Diary, powered by Notion 
 This repository manages the automated workflow for posting daily Chinese diary entries to Bluesky. Content is managed in Notion, and GitHub Actions handles scheduled posting.
 
 ## Architecture
-
 ```
 Notion (Questions / Answers / Words DBs)
   ↓ GitHub Actions (daily cron at 21:00 JST)
@@ -21,7 +20,6 @@ Notion (Questions / Answers / Words DBs)
 | Secret | Description |
 |--------|-------------|
 | `NOTION_TOKEN` | Notion Integration token |
-| `NOTION_QUESTIONS_DB_ID` | Notion Questions database ID |
 | `NOTION_ANSWERS_DB_ID` | Notion Answers database ID |
 | `BLUESKY_HANDLE` | Bluesky handle (e.g. `en0ki.bsky.social`) |
 | `BLUESKY_APP_PASSWORD` | Bluesky App Password |
@@ -38,16 +36,15 @@ Posts each to Bluesky and updates Notion accordingly.
 
 Can also be triggered manually via `workflow_dispatch`.
 
-### `migrate.yml` — Data Migration (one-time)
+### `migrate.yml` — Data Migration (one-time, already completed)
 
-Manual trigger only. Migrates existing data from Supabase CSV exports to Notion.
+Manual trigger only. Used to migrate existing data from Supabase CSV exports to Notion.
 
-Place CSV files in the `data/` directory before running:
+To reuse: place CSV files in the `data/` directory before running:
 - `data/questions_rows.csv`
 - `data/answers_rows.csv`
 
 ## Post Format
-
 ```
 質問: {question_zh}
 
@@ -62,13 +59,9 @@ Place CSV files in the `data/` directory before running:
 ```
 
 ## Local Development
-
 ```bash
 npm install
 
 # Run post script locally
 NOTION_TOKEN=xxx NOTION_ANSWERS_DB_ID=xxx BLUESKY_HANDLE=xxx BLUESKY_APP_PASSWORD=xxx npm run post
-
-# Run migration locally
-NOTION_TOKEN=xxx NOTION_QUESTIONS_DB_ID=xxx NOTION_ANSWERS_DB_ID=xxx npm run migrate
 ```
