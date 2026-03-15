@@ -3,14 +3,14 @@ import { pinyin } from "pinyin-pro";
 import fs from "fs";
 import path from "path";
 
-// 環境変数
+// Environment variables
 const NOTION_TOKEN = process.env.NOTION_TOKEN!;
 const NOTION_QUESTIONS_DB_ID = process.env.NOTION_QUESTIONS_DB_ID!;
 const NOTION_ANSWERS_DB_ID = process.env.NOTION_ANSWERS_DB_ID!;
 
 const notion = new Client({ auth: NOTION_TOKEN });
 
-// CSVパーサー（改行を含むフィールドに対応）
+// CSV parser (handles fields containing newlines)
 function parseCSV(content: string): Record<string, string>[] {
   const lines: string[] = [];
   let current = "";
@@ -75,16 +75,16 @@ function parseCSV(content: string): Record<string, string>[] {
   return records;
 }
 
-// レート制限対応: 指定ミリ秒待機
+// Rate limit helper: wait for the specified milliseconds
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// questions を移行
+// Migrate questions
 async function migrateQuestions(
   questions: Record<string, string>[]
 ): Promise<Map<string, string>> {
-  // supabase の id -> notion の page_id のマッピング
+  // Mapping from Supabase id to Notion page_id
   const idMap = new Map<string, string>();
 
   console.log(`Migrating ${questions.length} questions...`);
@@ -118,7 +118,7 @@ async function migrateQuestions(
         console.log(`  Questions: ${i + 1}/${questions.length}`);
       }
 
-      // Notion API レート制限対策（1秒に3リクエスト程度）
+      // Notion API rate limit (~3 requests per second)
       await sleep(350);
     } catch (error) {
       console.error(`Error migrating question id=${q.id}:`, error);
@@ -129,7 +129,7 @@ async function migrateQuestions(
   return idMap;
 }
 
-// answers を移行
+// Migrate answers
 async function migrateAnswers(
   answers: Record<string, string>[],
   questionIdMap: Map<string, string>
@@ -149,14 +149,13 @@ async function migrateAnswers(
       continue;
     }
 
-    // ピンインを生成
+    // Generate pinyin
     const answerPinyin = a.answer_zh
       ? pinyin(a.answer_zh, { toneType: "symbol", separator: " " })
       : "";
 
-    // Day Number を questions から取得するため、questionIdMap のキーから逆引き
-    // CSVにday_numberがないため、後で設定する（スクリプト実行時にanswers CSVにday_numberを含めるのが理想だが、
-    // ここではquestions CSVとのjoinで対応）
+    // Get Day Number by joining with the questions CSV
+    // (ideally answers CSV would include day_number, but we join here instead)
     const dayNumber = parseInt(a.day_number || "0", 10);
 
     try {
@@ -206,7 +205,7 @@ async function migrateAnswers(
         properties,
       });
 
-      // 添削メモをページ本文として追加
+      // Add correction notes as page body content
       if (a.correction_note) {
         await notion.blocks.children.append({
           block_id: page.id,
@@ -242,11 +241,11 @@ async function migrateAnswers(
   console.log(`Answers migration complete. ${successCount} records created.`);
 }
 
-// メイン処理
+// Main
 async function main() {
   console.log("Starting migration...");
 
-  // CSVファイルを読み込む
+  // Load CSV files
   const questionsPath = path.join(process.cwd(), "data", "questions_rows.csv");
   const answersPath = path.join(process.cwd(), "data", "answers_rows.csv");
 
@@ -267,17 +266,17 @@ async function main() {
 
   console.log(`Loaded ${questions.length} questions, ${answers.length} answers.`);
 
-  // answers に day_number を付与（questions CSVとのjoin）
+  // Assign day_number to answers by joining with questions CSV
   const questionDayMap = new Map<string, string>();
   questions.forEach((q) => questionDayMap.set(q.id, q.day_number));
   answers.forEach((a) => {
     a.day_number = questionDayMap.get(a.question_id) || "0";
   });
 
-  // 1. questions を移行
+  // 1. Migrate questions
   const questionIdMap = await migrateQuestions(questions);
 
-  // 2. answers を移行
+  // 2. Migrate answers
   await migrateAnswers(answers, questionIdMap);
 
   console.log("Migration complete!");

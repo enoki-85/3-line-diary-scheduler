@@ -1,7 +1,7 @@
 import { Client } from "@notionhq/client";
 import { BskyAgent, RichText } from "@atproto/api";
 
-// 環境変数
+// Environment variables
 const NOTION_TOKEN = process.env.NOTION_TOKEN!;
 const NOTION_ANSWERS_DB_ID = process.env.NOTION_ANSWERS_DB_ID!;
 const BLUESKY_HANDLE = process.env.BLUESKY_HANDLE!;
@@ -9,7 +9,7 @@ const BLUESKY_APP_PASSWORD = process.env.BLUESKY_APP_PASSWORD!;
 
 const notion = new Client({ auth: NOTION_TOKEN });
 
-// Bluesky エージェントを初期化
+// Initialize Bluesky agent
 async function getBlueskyAgent(): Promise<BskyAgent> {
   const agent = new BskyAgent({ service: "https://bsky.social" });
   await agent.login({
@@ -19,7 +19,7 @@ async function getBlueskyAgent(): Promise<BskyAgent> {
   return agent;
 }
 
-// 投稿対象のAnswersを取得（Scheduled At が過去 かつ Posted が false）
+// Get scheduled answers (Scheduled At is in the past and Posted is false)
 async function getScheduledAnswers() {
   const now = new Date().toISOString();
 
@@ -46,7 +46,7 @@ async function getScheduledAnswers() {
   return response.results;
 }
 
-// Notionページからプロパティを取得するヘルパー
+// Helper to extract properties from a Notion page
 function getTextProperty(page: any, name: string): string {
   const prop = page.properties[name];
   if (!prop) return "";
@@ -68,14 +68,14 @@ function getNumberProperty(page: any, name: string): number {
   return prop.number || 0;
 }
 
-// 投稿フォーマットを生成
+// Build post content
 function buildPostContent(answer: any): string {
   const answerZh = getTextProperty(answer, "Answer (ZH)");
   const intendedJa = getTextProperty(answer, "Intended (JA)");
   const dayNumber = getNumberProperty(answer, "Day Number");
   const term = getNumberProperty(answer, "Term");
 
-  // Question プロパティからお題を取得
+  // Get the question text from the Question relation property
   const questionRelation = answer.properties["Question"];
   let questionZh = "";
   if (
@@ -83,7 +83,7 @@ function buildPostContent(answer: any): string {
     questionRelation.type === "relation" &&
     questionRelation.relation.length > 0
   ) {
-    // リレーション先のページを取得（別途取得済みのデータを使用）
+    // Use pre-fetched question data from the related page
     questionZh = answer._questionZh || "";
   }
 
@@ -101,7 +101,7 @@ ${intendedJa}
 #enoki_Day${dayNumber}${termSuffix}`;
 }
 
-// Blueskyに投稿
+// Post to Bluesky
 async function postToBluesky(
   agent: BskyAgent,
   content: string
@@ -118,7 +118,7 @@ async function postToBluesky(
   return { uri: response.uri, cid: response.cid };
 }
 
-// Notionのページを投稿済みに更新
+// Mark the Notion page as posted
 async function markAsPosted(pageId: string, blueskyUri: string) {
   await notion.pages.update({
     page_id: pageId,
@@ -141,7 +141,7 @@ async function markAsPosted(pageId: string, blueskyUri: string) {
   });
 }
 
-// リレーション先のお題を取得
+// Fetch question text from a related page
 async function fetchQuestionZh(questionPageId: string): Promise<string> {
   const page = await notion.pages.retrieve({ page_id: questionPageId });
   const prop = (page as any).properties["Question (ZH)"];
@@ -149,7 +149,7 @@ async function fetchQuestionZh(questionPageId: string): Promise<string> {
   return prop.title.map((t: any) => t.plain_text).join("");
 }
 
-// メイン処理
+// Main
 async function main() {
   console.log("Starting scheduled post job...");
 
@@ -168,7 +168,7 @@ async function main() {
     const page = answer as any;
 
     try {
-      // リレーション先のお題を取得
+      // Fetch question text from the related page
       const questionRelation = page.properties["Question"];
       if (
         questionRelation &&
