@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "post": "tsx scripts/post.ts",
-    "migrate": "tsx scripts/migrate.ts"
+    "migrate": "tsx scripts/migrate.ts",
+    "write-day-numbers": "tsx scripts/write_day_numbers.ts"
   },
   "dependencies": {
     "@atproto/api": "^0.13.0",
