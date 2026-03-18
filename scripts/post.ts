@@ -145,8 +145,8 @@ async function markAsPosted(pageId: string, blueskyUri: string) {
 async function fetchQuestionZh(questionPageId: string): Promise<string> {
   const page = await notion.pages.retrieve({ page_id: questionPageId });
   const prop = (page as any).properties["Question (ZH)"];
-  if (!prop || prop.type !== "title") return "";
-  return prop.title.map((t: any) => t.plain_text).join("");
+  if (!prop || prop.type !== "rich_text") return "";
+  return prop.rich_text.map((t: any) => t.plain_text).join("");
 }
 
 // Main
