@@ -68,8 +68,14 @@ function getNumberProperty(page: any, name: string): number {
   return prop.number || 0;
 }
 
-// Build post content
-function buildPostContent(answer: any): string {
+// Count graphemes (Bluesky uses grapheme length for the 300 char limit)
+export function graphemeLength(text: string): number {
+  const segmenter = new Intl.Segmenter();
+  return [...segmenter.segment(text)].length;
+}
+
+// Build post content, split into main and reply if needed
+export function buildPostParts(answer: any): { main: string; reply: string | null } {
   const answerZh = getTextProperty(answer, "Answer (ZH)");
   const intendedJa = getTextProperty(answer, "Intended (JA)");
   const dayNumber = getNumberProperty(answer, "Day Number");
@@ -89,31 +95,58 @@ function buildPostContent(answer: any): string {
 
   const termSuffix = term > 1 ? `_term${term}` : "";
 
-  return `質問: ${questionZh}
+  const hashtags = `#中国語3行日記 #中文学习 #3行日记
+#enoki_Day${dayNumber}${termSuffix}`;
+
+  const intendedSection = `書きたかったこと:
+${intendedJa}`;
+
+  const full = `質問: ${questionZh}
 
 回答:
 ${answerZh}
 
-書きたかったこと:
-${intendedJa}
+${intendedSection}
 
-#中国語3行日記 #中文学习 #3行日记
-#enoki_Day${dayNumber}${termSuffix}`;
+${hashtags}`;
+
+  if (graphemeLength(full) <= 300) {
+    return { main: full, reply: null };
+  }
+
+  const mainPost = `質問: ${questionZh}
+
+回答:
+${answerZh}
+
+${hashtags}`;
+
+  return { main: mainPost, reply: intendedSection };
 }
 
-// Post to Bluesky
+// Post to Bluesky (optionally as a reply to a parent post)
 async function postToBluesky(
   agent: BskyAgent,
-  content: string
+  content: string,
+  parent?: { uri: string; cid: string }
 ): Promise<{ uri: string; cid: string }> {
   const richText = new RichText({ text: content });
   await richText.detectFacets(agent);
 
-  const response = await agent.post({
+  const record: any = {
     text: richText.text,
     facets: richText.facets,
     createdAt: new Date().toISOString(),
-  });
+  };
+
+  if (parent) {
+    record.reply = {
+      root: { uri: parent.uri, cid: parent.cid },
+      parent: { uri: parent.uri, cid: parent.cid },
+    };
+  }
+
+  const response = await agent.post(record);
 
   return { uri: response.uri, cid: response.cid };
 }
@@ -179,12 +212,20 @@ async function main() {
         page._questionZh = await fetchQuestionZh(questionPageId);
       }
 
-      const content = buildPostContent(page);
+      const { main, reply } = buildPostParts(page);
       console.log(`Posting Day ${getNumberProperty(page, "Day Number")}...`);
-      console.log(content);
+      console.log(main);
+      if (reply) {
+        console.log(`[thread reply] ${reply}`);
+      }
       console.log("---");
 
-      const result = await postToBluesky(agent, content);
+      const result = await postToBluesky(agent, main);
+
+      if (reply) {
+        await postToBluesky(agent, reply, result);
+        console.log("Reply posted as thread.");
+      }
 
       await markAsPosted(page.id, result.uri);
 
