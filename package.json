@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "post": "tsx scripts/post.ts",
-    "migrate": "tsx scripts/migrate.ts"
+    "migrate": "tsx scripts/migrate.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@atproto/api": "^0.13.0",
@@ -14,6 +15,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
   }
 }
