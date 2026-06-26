@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@atproto/api": "^0.13.0",
-    "@notionhq/client": "^2.3.0",
+    "@notionhq/client": "^5.22.0",
     "pinyin-pro": "^3.27.0"
   },
   "devDependencies": {
