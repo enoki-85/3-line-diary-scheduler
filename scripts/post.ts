@@ -19,12 +19,23 @@ async function getBlueskyAgent(): Promise<BskyAgent> {
   return agent;
 }
 
+// Resolve a database id to its primary data source id (Notion SDK v5)
+async function getDataSourceId(databaseId: string): Promise<string> {
+  const db: any = await notion.databases.retrieve({ database_id: databaseId });
+  const sources = db.data_sources;
+  if (!sources || sources.length === 0) {
+    throw new Error(`No data source found for database ${databaseId}`);
+  }
+  return sources[0].id;
+}
+
 // Get scheduled answers (Scheduled At is in the past and Posted is false)
 async function getScheduledAnswers() {
   const now = new Date().toISOString();
+  const dataSourceId = await getDataSourceId(NOTION_ANSWERS_DB_ID);
 
-  const response = await notion.databases.query({
-    database_id: NOTION_ANSWERS_DB_ID,
+  const response = await notion.dataSources.query({
+    data_source_id: dataSourceId,
     filter: {
       and: [
         {

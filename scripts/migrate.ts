@@ -10,6 +10,16 @@ const NOTION_ANSWERS_DB_ID = process.env.NOTION_ANSWERS_DB_ID!;
 
 const notion = new Client({ auth: NOTION_TOKEN });
 
+// Resolve a database id to its primary data source id (Notion SDK v5)
+async function getDataSourceId(databaseId: string): Promise<string> {
+  const db: any = await notion.databases.retrieve({ database_id: databaseId });
+  const sources = db.data_sources;
+  if (!sources || sources.length === 0) {
+    throw new Error(`No data source found for database ${databaseId}`);
+  }
+  return sources[0].id;
+}
+
 // CSV parser (handles fields containing newlines)
 function parseCSV(content: string): Record<string, string>[] {
   const lines: string[] = [];
@@ -82,7 +92,8 @@ function sleep(ms: number): Promise<void> {
 
 // Migrate questions
 async function migrateQuestions(
-  questions: Record<string, string>[]
+  questions: Record<string, string>[],
+  questionsDataSourceId: string
 ): Promise<Map<string, string>> {
   // Mapping from Supabase id to Notion page_id
   const idMap = new Map<string, string>();
@@ -94,7 +105,7 @@ async function migrateQuestions(
 
     try {
       const response = await notion.pages.create({
-        parent: { database_id: NOTION_QUESTIONS_DB_ID },
+        parent: { type: "data_source_id", data_source_id: questionsDataSourceId },
         properties: {
           "Question (ZH)": {
             title: [{ text: { content: q.question_zh || "" } }],
@@ -132,7 +143,8 @@ async function migrateQuestions(
 // Migrate answers
 async function migrateAnswers(
   answers: Record<string, string>[],
-  questionIdMap: Map<string, string>
+  questionIdMap: Map<string, string>,
+  answersDataSourceId: string
 ): Promise<void> {
   console.log(`Migrating ${answers.length} answers...`);
 
@@ -201,7 +213,7 @@ async function migrateAnswers(
       }
 
       const page = await notion.pages.create({
-        parent: { database_id: NOTION_ANSWERS_DB_ID },
+        parent: { type: "data_source_id", data_source_id: answersDataSourceId },
         properties,
       });
 
@@ -273,11 +285,15 @@ async function main() {
     a.day_number = questionDayMap.get(a.question_id) || "0";
   });
 
+  // Resolve data source ids (Notion SDK v5 queries/creates target data sources)
+  const questionsDataSourceId = await getDataSourceId(NOTION_QUESTIONS_DB_ID);
+  const answersDataSourceId = await getDataSourceId(NOTION_ANSWERS_DB_ID);
+
   // 1. Migrate questions
-  const questionIdMap = await migrateQuestions(questions);
+  const questionIdMap = await migrateQuestions(questions, questionsDataSourceId);
 
   // 2. Migrate answers
-  await migrateAnswers(answers, questionIdMap);
+  await migrateAnswers(answers, questionIdMap, answersDataSourceId);
 
   console.log("Migration complete!");
 }
